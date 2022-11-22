@@ -1,6 +1,5 @@
-import { DataLakeDirectoryClient, DataLakeFileClient, DataLakeFileSystemClient, DataLakeServiceClient, FileReadResponse } from '@azure/storage-file-datalake';
-const {BlobServiceClient} = require("@azure/storage-blob");
 import { ChainedTokenCredential, DefaultAzureCredential, ManagedIdentityCredential } from '@azure/identity';
+import { BlobServiceClient } from '@azure/storage-blob';
 import * as fs from "fs";
 
 export type clientInput = {
@@ -11,7 +10,7 @@ export type clientInput = {
 export class AzureBlobClient {
   blob_cs: string;  
   managed_identity_toggle: boolean;
-  datalake_service_client: DataLakeServiceClient;
+  blob_service_client: BlobServiceClient;
 
 
   //class constructor
@@ -22,40 +21,30 @@ export class AzureBlobClient {
     if (this.managed_identity_toggle) {
       let managed_identity = new ManagedIdentityCredential();
       let credential_chain = new ChainedTokenCredential(managed_identity);
-      this.datalake_service_client = new DataLakeServiceClient(this.blob_cs, managed_identity)
+      this.blob_service_client = new BlobServiceClient(this.blob_cs, managed_identity)
     }
     else {
-      this.datalake_service_client = DataLakeServiceClient.fromConnectionString(this.blob_cs);
+      this.blob_service_client = BlobServiceClient.fromConnectionString(this.blob_cs);
     }
   }
 
-  public async store_document(fileSystemName: string, dirName: string, fileName: string, file_obj: Buffer): Promise<boolean> {
+  public async store_document(containerName: string, blobName: string, blob_obj: Buffer): Promise<boolean> {
 
     try {
-      this.datalake_service_client = await DataLakeServiceClient.fromConnectionString(this.blob_cs);
-      let file_system_client: DataLakeFileSystemClient = await this.datalake_service_client.getFileSystemClient(fileSystemName);
 
-      let exists: boolean = await file_system_client.exists()
+      let containerClient = this.blob_service_client.getContainerClient(containerName);
+
+      let exists: boolean = await containerClient.exists()
       if(!(exists)){
-        await file_system_client.createIfNotExists();
+        await containerClient.createIfNotExists();
       }
-      console.log(fileName)
-      let file_client: DataLakeFileClient = file_system_client.getFileClient(fileName);
-      exists = await file_client.exists();
-      if(!exists){
-        await file_client.create()
-      }
-  
-      if (file_obj !== null) {
-        let fileObj = "hello"
-        await file_client.append(fileObj, 0, fileObj.length);
-        await file_client.flush(fileObj.length);
-      } else {
-        const data = "test file"
-        file_client.append(data, 0, data.length);
-        file_client.flush(data.length);
-      }
-      console.log(`Create and upload file ${fileSystemName}/${dirName}/${fileName} successfully`);
+      console.log(`Created container client with name ${containerClient.containerName}`)
+
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+      const uploadBlobResponse = await blockBlobClient.upload(blob_obj, blob_obj.length)
+
+      console.log(`Created and uploaded file ${containerName}/${blobName} successfully`, JSON.stringify(uploadBlobResponse));
       return true;
     } catch(e) {
       console.log(e)
@@ -65,27 +54,15 @@ export class AzureBlobClient {
 
   }
 
-  public async fetch_document(path_full: string, fileSystemName: string): Promise<Blob|undefined> {
+  public async fetch_document(containerName: string, blobName: string): Promise<Buffer> {
+
     try{
-      let path_base = path_full.split("/", 1)[0];
-      let file_name = path_full.split("/", 1)[1];
-      fs.mkdir(path_base, (err) => {
-        if (err) {
-            return console.error(err);
-        }
-        console.log('Directory created successfully!');
-      });
-  
-      let file_system_client: DataLakeFileSystemClient = this.datalake_service_client.getFileSystemClient(fileSystemName);
-      let dir_client: DataLakeDirectoryClient = file_system_client.getDirectoryClient(path_base);
-      let file_client: DataLakeFileClient = dir_client.getFileClient(file_name)
-  
-      const downloaded_res: FileReadResponse = await file_client.read();
-      let res_blob: Blob | undefined = await downloaded_res.contentAsBlob
-      // let res_str:string = await this.blobToString(res_blob ? res_blob : y);
-      // console.log(res_str);
-  
-      return res_blob;
+      let containerClient = this.blob_service_client.getContainerClient(containerName);
+      const blobClient = containerClient.getBlobClient(blobName);
+      const downloadBlockBlobResponse = await blobClient.download();
+      const res: Buffer = await this.streamToBuffer(downloadBlockBlobResponse.readableStreamBody)
+      console.log("Downloaded blob content:", res.toString());
+      return res; 
     }
     catch(e) {
       console.log(e)
@@ -94,16 +71,16 @@ export class AzureBlobClient {
   }
 
 
-
-  // public async blobToString(blob: Blob): Promise<string> {
-  //   const fileReader = new FileReader();
-  //   return new Promise<string>((resolve, reject) => {
-  //     fileReader.onloadend = (ev: any) => {
-  //       resolve(ev.target!.result);
-  //     };
-  //     fileReader.onerror = reject;
-  //     fileReader.readAsText(blob);
-  //   });
-  // }
-
+  public async streamToBuffer(readableStream: any): Promise<Buffer> {
+    return new Promise<Buffer>((resolve, reject) => {
+      const chunks: any[] = [];
+      readableStream.on("data", (data: any) => {
+        chunks.push(data instanceof Buffer ? data : Buffer.from(data));
+      });
+      readableStream.on("end", () => {
+        resolve(Buffer.concat(chunks));
+      });
+      readableStream.on("error", reject);
+    });
+  }
 }
