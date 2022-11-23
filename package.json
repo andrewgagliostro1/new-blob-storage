@@ -2,7 +2,7 @@
   "name": "blob-storage-pkg",
   "version": "1.0.0",
   "description": "SDK for Azure Data Lake Blob Storage",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "scripts": {
     "build": "rimraf dist && tsc"
   },

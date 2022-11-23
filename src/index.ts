@@ -28,7 +28,7 @@ export class AzureBlobClient {
     }
   }
 
-  public async store_document(containerName: string, blobName: string, blob_obj: Buffer): Promise<boolean> {
+  public async store_blob(containerName: string, blobName: string, blob_obj: Buffer): Promise<boolean> {
 
     try {
 
@@ -54,14 +54,14 @@ export class AzureBlobClient {
 
   }
 
-  public async fetch_document(containerName: string, blobName: string): Promise<Buffer> {
+  public async fetch_blob(containerName: string, blobName: string): Promise<Buffer> {
 
     try{
       let containerClient = this.blob_service_client.getContainerClient(containerName);
       const blobClient = containerClient.getBlobClient(blobName);
       const downloadBlockBlobResponse = await blobClient.download();
       const res: Buffer = await this.streamToBuffer(downloadBlockBlobResponse.readableStreamBody)
-      console.log("Downloaded blob content:", res.toString());
+      console.log("Downloaded blob content");
       return res; 
     }
     catch(e) {
