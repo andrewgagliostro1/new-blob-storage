@@ -74,6 +74,21 @@ export class AzureBlobClient {
     }
   }
 
+
+  public async delete_blob(containerName: string, blobName: string): Promise<void> {
+    try {
+      let containerClient = this.blob_service_client.getContainerClient(containerName);
+      const blobClient = containerClient.getBlobClient(blobName);
+      const downloadBlockBlobResponse = await blobClient.delete();
+      return
+    }
+    catch (e) {
+      console.log(e)
+      throw e;
+    }
+  }
+
+
   public async list_blobs(containerName: string): Promise<string[]> {
 
     let containerClient = this.blob_service_client.getContainerClient(containerName);

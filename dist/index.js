@@ -71,6 +71,20 @@ class AzureBlobClient {
             }
         });
     }
+    delete_blob(containerName, blobName) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                let containerClient = this.blob_service_client.getContainerClient(containerName);
+                const blobClient = containerClient.getBlobClient(blobName);
+                const downloadBlockBlobResponse = yield blobClient.delete();
+                return;
+            }
+            catch (e) {
+                console.log(e);
+                throw e;
+            }
+        });
+    }
     list_blobs(containerName) {
         var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {

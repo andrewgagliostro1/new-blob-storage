@@ -15,6 +15,7 @@ export declare class AzureBlobClient {
     constructor(input: ClientInput);
     store_blob(containerName: string, blobName: string, blob_obj: Buffer): Promise<boolean>;
     fetch_blob(containerName: string, blobName: string): Promise<Buffer>;
+    delete_blob(containerName: string, blobName: string): Promise<void>;
     list_blobs(containerName: string): Promise<string[]>;
     list_containers(): Promise<string[]>;
     list_containers_with_blobs(): Promise<ContainerBlobInfo[]>;
