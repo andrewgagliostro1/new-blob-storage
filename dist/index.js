@@ -71,7 +71,7 @@ class AzureBlobClient {
             }
         });
     }
-    listBlobHierarchical(containerName, hierarchyDelimiter) {
+    listBlobHierarchical(containerName, hierarchyDelimiter = '/') {
         var _a, e_1, _b, _c, _d, e_2, _e, _f;
         return __awaiter(this, void 0, void 0, function* () {
             // page size - artificially low as example
@@ -89,7 +89,7 @@ class AzureBlobClient {
             let containerClient = this.blob_service_client.getContainerClient(containerName);
             try {
                 for (var _g = true, _h = __asyncValues(containerClient
-                    .listBlobsByHierarchy('/', listOptions)
+                    .listBlobsByHierarchy(hierarchyDelimiter, listOptions)
                     .byPage({ maxPageSize })), _j; _j = yield _h.next(), _a = _j.done, !_a;) {
                     _c = _j.value;
                     _g = false;

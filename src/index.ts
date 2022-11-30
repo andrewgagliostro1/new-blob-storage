@@ -70,7 +70,7 @@ export class AzureBlobClient {
     }
   }
 
-  public async listBlobHierarchical(containerName: string, hierarchyDelimiter: string) {
+  public async listBlobHierarchical(containerName: string, hierarchyDelimiter: string = '/') {
 
     // page size - artificially low as example
     const maxPageSize = 2;
@@ -88,7 +88,7 @@ export class AzureBlobClient {
     console.log(`Folder $ /`);
     let containerClient = this.blob_service_client.getContainerClient(containerName);
     for await (const response of containerClient
-      .listBlobsByHierarchy('/', listOptions)
+      .listBlobsByHierarchy(hierarchyDelimiter, listOptions)
       .byPage({ maxPageSize })) {
   
       console.log(`   Page ${i++}`);
