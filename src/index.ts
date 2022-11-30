@@ -1,20 +1,24 @@
 import { ChainedTokenCredential, DefaultAzureCredential, ManagedIdentityCredential } from '@azure/identity';
 import { BlobServiceClient } from '@azure/storage-blob';
-import * as fs from "fs";
 
-export type clientInput = {
+export type ClientInput = {
   blob_cs: string,
   managed_identity_toggle: boolean,
 }
 
+export type ContainerBlobInfo = {
+  container_name: string,
+  blob_names: string[]
+}
+
 export class AzureBlobClient {
-  blob_cs: string;  
+  blob_cs: string;
   managed_identity_toggle: boolean;
   blob_service_client: BlobServiceClient;
 
 
   //class constructor
-  constructor(input: clientInput) {
+  constructor(input: ClientInput) {
     this.blob_cs = input.blob_cs;
     this.managed_identity_toggle = input.managed_identity_toggle //os.environ.get("managed_identity");
     let default_credential = new DefaultAzureCredential();
@@ -35,7 +39,7 @@ export class AzureBlobClient {
       let containerClient = this.blob_service_client.getContainerClient(containerName);
 
       let exists: boolean = await containerClient.exists()
-      if(!(exists)){
+      if (!(exists)) {
         await containerClient.createIfNotExists();
       }
       console.log(`Created container client with name ${containerClient.containerName}`)
@@ -46,7 +50,7 @@ export class AzureBlobClient {
 
       console.log(`Created and uploaded file ${containerName}/${blobName} successfully`, JSON.stringify(uploadBlobResponse));
       return true;
-    } catch(e) {
+    } catch (e) {
       console.log(e)
       throw e;
       return false;
@@ -56,59 +60,76 @@ export class AzureBlobClient {
 
   public async fetch_blob(containerName: string, blobName: string): Promise<Buffer> {
 
-    try{
+    try {
       let containerClient = this.blob_service_client.getContainerClient(containerName);
       const blobClient = containerClient.getBlobClient(blobName);
       const downloadBlockBlobResponse = await blobClient.download();
       const res: Buffer = await this.streamToBuffer(downloadBlockBlobResponse.readableStreamBody)
       console.log("Downloaded blob content");
-      return res; 
+      return res;
     }
-    catch(e) {
+    catch (e) {
       console.log(e)
       throw e;
     }
   }
 
-  public async listBlobHierarchical(containerName: string, hierarchyDelimiter: string = '/') {
+  public async list_blobs(containerName: string): Promise<string[]> {
 
-    // page size - artificially low as example
-    const maxPageSize = 2;
-  
-    // some options for filtering list
-    const listOptions = {
-      includeMetadata: true,
-      includeSnapshots: false,
-      includeTags: true,
-      includeVersions: false,
-      prefix: ''
-    };
-  
-    let i = 1;
-    console.log(`Folder $ /`);
     let containerClient = this.blob_service_client.getContainerClient(containerName);
-    for await (const response of containerClient
-      .listBlobsByHierarchy(hierarchyDelimiter, listOptions)
-      .byPage({ maxPageSize })) {
-  
-      console.log(`   Page ${i++}`);
-      const segment = response.segment;
-  
-      if (segment.blobPrefixes) {
-  
-        // Do something with each virtual folder
-        for await (const prefix of segment.blobPrefixes) {
-  
-          // build new virtualHierarchyDelimiter from current and next
-          await this.listBlobHierarchical(containerName, `${hierarchyDelimiter}${prefix.name}`);
+    try {
+      let out: string[] = []
+      let i = 1;
+      let blobs = containerClient.listBlobsFlat();
+      for await (const blob of blobs) {
+        out.push(`Blob ${i++}: ${blob.name}`);
+      }
+
+      return out;
+    }
+    catch (e) {
+      console.log(e);
+      throw e;
+    }
+  }
+
+  public async list_containers(): Promise<string[]> {
+
+    try {
+      let out: string[] = []
+      let i = 1;
+      let containers = this.blob_service_client.listContainers();
+      for await (const container of containers) {
+        out.push(`Container ${i++}: ${container.name}`);
+      }
+      return out;
+    }
+    catch (e) {
+      console.log(e);
+      throw e;
+    }
+  }
+
+
+  public async list_containers_with_blobs(): Promise<ContainerBlobInfo[]> {
+    try {
+      let out: ContainerBlobInfo[] = []
+      let i = 1;
+      let containers = this.blob_service_client.listContainers();
+      for await (const container of containers) {
+        let info: ContainerBlobInfo = { container_name: container.name, blob_names: [] }
+        let containerClient = this.blob_service_client.getContainerClient(container.name);
+        let blobs = containerClient.listBlobsFlat();
+        for await (const blob of blobs) {
+          info.blob_names.push(`${blob.name}`);
         }
+        out.push(info);
       }
-  
-      for (const blob of response.segment.blobItems) {
-  
-        // Do something with each blob
-        console.log(`\tBlobItem: name - ${blob.name}`);
-      }
+      return out
+    }
+    catch (e) {
+      console.log(e);
+      throw e;
     }
   }
 
@@ -125,4 +146,7 @@ export class AzureBlobClient {
       readableStream.on("error", reject);
     });
   }
+
+
+
 }

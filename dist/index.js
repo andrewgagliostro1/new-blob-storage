@@ -71,72 +71,132 @@ class AzureBlobClient {
             }
         });
     }
-    listBlobHierarchical(containerName, hierarchyDelimiter = '/') {
-        var _a, e_1, _b, _c, _d, e_2, _e, _f;
+    list_blobs(containerName) {
+        var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
-            // page size - artificially low as example
-            const maxPageSize = 2;
-            // some options for filtering list
-            const listOptions = {
-                includeMetadata: true,
-                includeSnapshots: false,
-                includeTags: true,
-                includeVersions: false,
-                prefix: ''
-            };
-            let i = 1;
-            console.log(`Folder $ /`);
             let containerClient = this.blob_service_client.getContainerClient(containerName);
             try {
-                for (var _g = true, _h = __asyncValues(containerClient
-                    .listBlobsByHierarchy(hierarchyDelimiter, listOptions)
-                    .byPage({ maxPageSize })), _j; _j = yield _h.next(), _a = _j.done, !_a;) {
-                    _c = _j.value;
-                    _g = false;
+                let out = [];
+                let i = 1;
+                let blobs = containerClient.listBlobsFlat();
+                try {
+                    for (var _d = true, blobs_1 = __asyncValues(blobs), blobs_1_1; blobs_1_1 = yield blobs_1.next(), _a = blobs_1_1.done, !_a;) {
+                        _c = blobs_1_1.value;
+                        _d = false;
+                        try {
+                            const blob = _c;
+                            out.push(`Blob ${i++}: ${blob.name}`);
+                        }
+                        finally {
+                            _d = true;
+                        }
+                    }
+                }
+                catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                finally {
                     try {
-                        const response = _c;
-                        console.log(`   Page ${i++}`);
-                        const segment = response.segment;
-                        if (segment.blobPrefixes) {
+                        if (!_d && !_a && (_b = blobs_1.return)) yield _b.call(blobs_1);
+                    }
+                    finally { if (e_1) throw e_1.error; }
+                }
+                return out;
+            }
+            catch (e) {
+                console.log(e);
+                throw e;
+            }
+        });
+    }
+    list_containers() {
+        var _a, e_2, _b, _c;
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                let out = [];
+                let i = 1;
+                let containers = this.blob_service_client.listContainers();
+                try {
+                    for (var _d = true, containers_1 = __asyncValues(containers), containers_1_1; containers_1_1 = yield containers_1.next(), _a = containers_1_1.done, !_a;) {
+                        _c = containers_1_1.value;
+                        _d = false;
+                        try {
+                            const container = _c;
+                            out.push(`Container ${i++}: ${container.name}`);
+                        }
+                        finally {
+                            _d = true;
+                        }
+                    }
+                }
+                catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                finally {
+                    try {
+                        if (!_d && !_a && (_b = containers_1.return)) yield _b.call(containers_1);
+                    }
+                    finally { if (e_2) throw e_2.error; }
+                }
+                return out;
+            }
+            catch (e) {
+                console.log(e);
+                throw e;
+            }
+        });
+    }
+    list_containers_with_blobs() {
+        var _a, e_3, _b, _c, _d, e_4, _e, _f;
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                let out = [];
+                let i = 1;
+                let containers = this.blob_service_client.listContainers();
+                try {
+                    for (var _g = true, containers_2 = __asyncValues(containers), containers_2_1; containers_2_1 = yield containers_2.next(), _a = containers_2_1.done, !_a;) {
+                        _c = containers_2_1.value;
+                        _g = false;
+                        try {
+                            const container = _c;
+                            let info = { container_name: container.name, blob_names: [] };
+                            let containerClient = this.blob_service_client.getContainerClient(container.name);
+                            let blobs = containerClient.listBlobsFlat();
                             try {
-                                // Do something with each virtual folder
-                                for (var _k = true, _l = (e_2 = void 0, __asyncValues(segment.blobPrefixes)), _m; _m = yield _l.next(), _d = _m.done, !_d;) {
-                                    _f = _m.value;
-                                    _k = false;
+                                for (var _h = true, blobs_2 = (e_4 = void 0, __asyncValues(blobs)), blobs_2_1; blobs_2_1 = yield blobs_2.next(), _d = blobs_2_1.done, !_d;) {
+                                    _f = blobs_2_1.value;
+                                    _h = false;
                                     try {
-                                        const prefix = _f;
-                                        // build new virtualHierarchyDelimiter from current and next
-                                        yield this.listBlobHierarchical(containerName, `${hierarchyDelimiter}${prefix.name}`);
+                                        const blob = _f;
+                                        info.blob_names.push(`${blob.name}`);
                                     }
                                     finally {
-                                        _k = true;
+                                        _h = true;
                                     }
                                 }
                             }
-                            catch (e_2_1) { e_2 = { error: e_2_1 }; }
+                            catch (e_4_1) { e_4 = { error: e_4_1 }; }
                             finally {
                                 try {
-                                    if (!_k && !_d && (_e = _l.return)) yield _e.call(_l);
+                                    if (!_h && !_d && (_e = blobs_2.return)) yield _e.call(blobs_2);
                                 }
-                                finally { if (e_2) throw e_2.error; }
+                                finally { if (e_4) throw e_4.error; }
                             }
+                            out.push(info);
                         }
-                        for (const blob of response.segment.blobItems) {
-                            // Do something with each blob
-                            console.log(`\tBlobItem: name - ${blob.name}`);
+                        finally {
+                            _g = true;
                         }
-                    }
-                    finally {
-                        _g = true;
                     }
                 }
+                catch (e_3_1) { e_3 = { error: e_3_1 }; }
+                finally {
+                    try {
+                        if (!_g && !_a && (_b = containers_2.return)) yield _b.call(containers_2);
+                    }
+                    finally { if (e_3) throw e_3.error; }
+                }
+                return out;
             }
-            catch (e_1_1) { e_1 = { error: e_1_1 }; }
-            finally {
-                try {
-                    if (!_g && !_a && (_b = _h.return)) yield _b.call(_h);
-                }
-                finally { if (e_1) throw e_1.error; }
+            catch (e) {
+                console.log(e);
+                throw e;
             }
         });
     }

@@ -1,6 +1,6 @@
 {
   "name": "blob-storage-pkg",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "SDK for Azure Data Lake Blob Storage",
   "main": "dist/index.js",
   "scripts": {
