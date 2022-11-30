@@ -70,6 +70,48 @@ export class AzureBlobClient {
     }
   }
 
+  public async listBlobHierarchical(containerName: string, hierarchyDelimiter: string) {
+
+    // page size - artificially low as example
+    const maxPageSize = 2;
+  
+    // some options for filtering list
+    const listOptions = {
+      includeMetadata: true,
+      includeSnapshots: false,
+      includeTags: true,
+      includeVersions: false,
+      prefix: ''
+    };
+  
+    let i = 1;
+    console.log(`Folder $ /`);
+    let containerClient = this.blob_service_client.getContainerClient(containerName);
+    for await (const response of containerClient
+      .listBlobsByHierarchy('/', listOptions)
+      .byPage({ maxPageSize })) {
+  
+      console.log(`   Page ${i++}`);
+      const segment = response.segment;
+  
+      if (segment.blobPrefixes) {
+  
+        // Do something with each virtual folder
+        for await (const prefix of segment.blobPrefixes) {
+  
+          // build new virtualHierarchyDelimiter from current and next
+          await this.listBlobHierarchical(containerName, `${hierarchyDelimiter}${prefix.name}`);
+        }
+      }
+  
+      for (const blob of response.segment.blobItems) {
+  
+        // Do something with each blob
+        console.log(`\tBlobItem: name - ${blob.name}`);
+      }
+    }
+  }
+
 
   public async streamToBuffer(readableStream: any): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
